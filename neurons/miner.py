@@ -107,13 +107,13 @@ class XdevMiner(BaseMinerNeuron):
 
     async def forward(self, synapse: DetectionSynapse) -> DetectionSynapse:
         try:
-            sessions = synapse.sessions or []
-            if not sessions:
-                synapse.predictions = []
+            chunks = synapse.chunks or []
+            if not chunks:
+                synapse.risk_scores = []
                 return synapse
 
-            # Extract 25 features per session
-            feats = np.array([extract_xdev_features(s) for s in sessions], dtype=np.float32)
+            # Extract 25 features per chunk
+            feats = np.array([extract_xdev_features(c) for c in chunks], dtype=np.float32)
 
             # Within-batch normalization
             mu  = feats.mean(0)
@@ -127,13 +127,14 @@ class XdevMiner(BaseMinerNeuron):
 
             n_flagged = sum(1 for s in scores if s > 0.5)
             bt.logging.info(
-                f"Scored {len(scores)} sessions | flagged={n_flagged} | "
+                f"Scored {len(scores)} chunks | flagged={n_flagged} | "
                 f"range=[{min(scores):.3f}, {max(scores):.3f}]"
             )
-            synapse.predictions = scores
+            synapse.risk_scores = scores
+            synapse.predictions = [s >= 0.5 for s in scores]
         except Exception:
             bt.logging.error(traceback.format_exc())
-            synapse.predictions = [0.5] * len(synapse.sessions or [])
+            synapse.risk_scores = [0.5] * len(synapse.chunks or [])
         return synapse
 
     async def blacklist(self, synapse: DetectionSynapse) -> Tuple[bool, str]:
