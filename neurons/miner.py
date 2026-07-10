@@ -76,7 +76,7 @@ class XdevMiner(BaseMinerNeuron):
                 "model_version": "hgb-within-batch-25feat-v1",
                 "framework":     "sklearn-histgbm",
                 "license":       "MIT",
-                "repo_url":      "https://github.com/SerGem811/poker44-xdev",
+                "repo_url":      "https://github.com/Ultimate8888/poker44-xdev",
                 "repo_commit":   _git_head(_XDEV_ROOT),
                 "open_source":   True,
                 "inference_mode": "remote",
