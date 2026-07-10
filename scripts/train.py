@@ -1,116 +1,114 @@
 """
-Train xdev-trainer-v1: HistGBM + IsotonicRegression calibration on top-25 temporal features.
-Saves to scratchpad first; call deploy.py to push to models/.
+Train xdev-trainer-v2: HistGBM + IsotonicRegression on top-60 features,
+extracted from validator-PROJECTED payloads, within-batch normalized.
+
+Key insight vs v1: the validator projects every hand through
+poker44.validator.payload_view.prepare_hand_for_miner (bet-size bucketing with
+deterministic noise, 5-8 sampled actions per hand, seat aliasing, zeroed
+outcomes) before querying miners. Training on raw benchmark hands therefore
+creates a train/serve mismatch; v2 projects all training data through the same
+canonicalizer first. The XDEV_FEATURE_NAMES top-60 list in xdev/features.py was
+selected on projected data by LightGBM gain (0.6) + |Cohen's d| (0.4).
+
+Usage:
+  1) Fetch sessions:
+     python /root/work/Poker44-subnet/scripts/miner/train/build_sequences.py \
+         --out <sessions.pkl> --discover-limit 120 --per-date-limit 500
+  2) python scripts/train.py <sessions.pkl> <out_model.joblib>
 """
-import sys, os, time, pickle, random, hashlib
-
-SCRATCHPAD = "/tmp/claude-0/-root-work-Poker44-subnet/af349465-764e-476f-a1d1-e210d196bbe9/scratchpad"
-SESSIONS_IN = f"{SCRATCHPAD}/sessions_fresh.pkl"
-CANDIDATE_OUT = f"{SCRATCHPAD}/xdev_v1_candidate.joblib"
-
+import sys, pickle, random, time
 sys.path.insert(0, "/root/work/Poker44-subnet")
 sys.path.insert(0, "/root/work/poker44-xdev")
 
 import numpy as np, warnings
 warnings.filterwarnings("ignore")
 
-from xdev.features import XDEV_FEATURE_NAMES, N_XDEV_FEATURES, extract_xdev_batch
+from poker44.validator.payload_view import prepare_hand_for_miner
+from poker44.score.scoring import reward
+from xdev.features import XDEV_FEATURE_NAMES, N_XDEV_FEATURES, extract_xdev_features
 from xdev.model import XdevModel
 from sklearn.ensemble import HistGradientBoostingClassifier
 from sklearn.isotonic import IsotonicRegression
-from sklearn.metrics import average_precision_score, roc_auc_score
+
+SESSIONS_IN, MODEL_OUT = sys.argv[1], sys.argv[2]
+T_STAR = 0.70  # deployed sigmoid_score midpoint; hard threshold 0.5 <=> p >= T_STAR
+BS = 100      # chunks per simulated validator cycle
 
 def ts(): return time.strftime("[%H:%M:%S]")
 
-assert N_XDEV_FEATURES == 25, f"Expected 25, got {N_XDEV_FEATURES}"
+assert N_XDEV_FEATURES == 60
 
-print(f"{ts()} Loading sessions from {SESSIONS_IN}")
 with open(SESSIONS_IN, "rb") as f:
     sessions = pickle.load(f)
+print(f"{ts()} {len(sessions)} sessions", flush=True)
 
-bot_s   = [h for h,l in sessions if l==1]
-human_s = [h for h,l in sessions if l==0]
-print(f"{ts()} {len(sessions)} sessions: {len(bot_s)} bot, {len(human_s)} human")
-
-print(f"{ts()} Extracting features...", flush=True)
 t0 = time.time()
-bot_f   = extract_xdev_batch(bot_s)
-human_f = extract_xdev_batch(human_s)
-print(f"{ts()} Done in {time.time()-t0:.1f}s — shape={bot_f.shape}")
+X_all = np.array([
+    extract_xdev_features([prepare_hand_for_miner(h) for h in hands])
+    for hands, _ in sessions
+], dtype=np.float32)
+y_all = np.array([int(y) for _, y in sessions], dtype=np.int32)
+X_all = np.nan_to_num(X_all, nan=0.0, posinf=0.0, neginf=0.0)
+print(f"{ts()} projected+extracted {X_all.shape} in {time.time()-t0:.0f}s", flush=True)
 
-# Cohen's d for all 25 features
-import math
-def cd(a,b):
-    na,nb=len(a),len(b)
-    p=math.sqrt(((na-1)*a.var()+(nb-1)*b.var())/(na+nb-2))
-    return float((a.mean()-b.mean())/p) if p>1e-9 else 0.0
+# stratified split: 60% train / 20% calibration / 20% test (same seed as v2 run)
+rng = np.random.RandomState(42)
+idx = np.arange(len(y_all))
+tr_i, cal_i, te_i = [], [], []
+for lbl in (0, 1):
+    li = idx[y_all == lbl]; rng.shuffle(li)
+    n = len(li); a, b = int(n * 0.6), int(n * 0.8)
+    tr_i += list(li[:a]); cal_i += list(li[a:b]); te_i += list(li[b:])
 
-print(f"\n{ts()} Feature Cohen's d (all 25):")
-for i,nm in enumerate(XDEV_FEATURE_NAMES):
-    d=cd(bot_f[:,i],human_f[:,i])
-    print(f"  {nm:<40s}  d={d:+.3f}")
+def make_batches(pool_idx, n_batches, seed):
+    r = random.Random(seed)
+    bots = [i for i in pool_idx if y_all[i] == 1]
+    hums = [i for i in pool_idx if y_all[i] == 0]
+    Xb, yb = [], []
+    for _ in range(n_batches):
+        nb = r.randint(30, 70); nh = BS - nb
+        sel = [bots[r.randrange(len(bots))] for _ in range(nb)] + \
+              [hums[r.randrange(len(hums))] for _ in range(nh)]
+        Xr = X_all[sel]
+        mu, sig = Xr.mean(0), Xr.std(0); sig[sig < 1e-9] = 1.0
+        Xb.append(np.clip((Xr - mu) / sig, -5, 5))
+        yb.append(np.array([1] * nb + [0] * nh))
+    return np.vstack(Xb), np.concatenate(yb)
 
-# Augment
-rng=random.Random(42)
-def aug(s,rng):
-    s=list(s);rng.shuffle(s);n=len(s);a=[]
-    for i in range(0,(n//2)*2,2):a.append(s[i]+s[i+1])
-    for i in range(0,(n//3)*3,3):a.append(s[i]+s[i+1]+s[i+2])
-    return a
+Xtr, ytr = make_batches(tr_i, 400, seed=202)
+print(f"{ts()} training HistGBM on {Xtr.shape} ...", flush=True)
+hgb = HistGradientBoostingClassifier(
+    max_iter=800, learning_rate=0.035, max_leaf_nodes=63,
+    min_samples_leaf=25, l2_regularization=0.3,
+    early_stopping=False, random_state=42)
+hgb.fit(Xtr, ytr)
 
-bot_aug  = bot_s  + aug(bot_s,  rng)
-human_aug= human_s+ aug(human_s,rng)
-print(f"\n{ts()} Augmented: {len(bot_aug)} bot, {len(human_aug)} human")
-t1=time.time()
-bot_all   = extract_xdev_batch(bot_aug)
-human_all = extract_xdev_batch(human_aug)
-print(f"{ts()} Done in {time.time()-t1:.1f}s")
+Xc, yc = make_batches(cal_i, 150, seed=303)
+cal = IsotonicRegression(out_of_bounds="clip")
+cal.fit(np.clip(hgb.predict_proba(Xc)[:, 1], 0, 1), yc)
+model = XdevModel(hgb=hgb, calibrator=cal)
 
-# Build synthetic within-batch training set (300 batches, 30-70 bots)
-rng2=random.Random(1234); N_B=300; BS=100
-X_list,y_list=[],[]
-for _ in range(N_B):
-    nb=rng2.randint(30,70); nh=BS-nb
-    bi=[rng2.randrange(len(bot_all)) for _ in range(nb)]
-    hi=[rng2.randrange(len(human_all)) for _ in range(nh)]
-    b=np.vstack([bot_all[bi],human_all[hi]])
-    mu=b.mean(0);sig=b.std(0);sig[sig<1e-9]=1.0
-    X_list.append(np.clip((b-mu)/sig,-5,5))
-    y_list.extend([1]*nb+[0]*nh)
-X=np.vstack(X_list); y=np.array(y_list,dtype=np.int32)
+# evaluate with the validator's literal reward() on held-out test cycles
+def eval_cycles(pool_idx, n_cycles, seed):
+    r = random.Random(seed)
+    bots = [i for i in pool_idx if y_all[i] == 1]
+    hums = [i for i in pool_idx if y_all[i] == 0]
+    rews, aps = [], []
+    for _ in range(n_cycles):
+        nb = r.randint(30, 70); nh = BS - nb
+        sel = [bots[r.randrange(len(bots))] for _ in range(nb)] + \
+              [hums[r.randrange(len(hums))] for _ in range(nh)]
+        lab = np.array([1] * nb + [0] * nh)
+        Xr = X_all[sel]
+        mu, sig = Xr.mean(0), Xr.std(0); sig[sig < 1e-9] = 1.0
+        p = model.predict_proba(np.clip((Xr - mu) / sig, -5, 5))
+        s = 1.0 / (1.0 + np.exp(-10.0 * (p - T_STAR)))
+        rr, m = reward(s, lab)
+        rews.append(rr); aps.append(m["ap_score"])
+    return float(np.mean(rews)), float(np.mean(aps))
 
-holdout_n=50*BS
-X_tr,X_ho=X[:-holdout_n],X[-holdout_n:]
-y_tr,y_ho=y[:-holdout_n],y[-holdout_n:]
-print(f"\n{ts()} Train={len(X_tr)}, Holdout={len(X_ho)}, shape={X.shape}")
+r_te, ap_te = eval_cycles(te_i, 100, seed=606)
+print(f"{ts()} TEST reward={r_te:.4f} AP={ap_te:.4f}", flush=True)
 
-# Train HistGBM
-print(f"\n{ts()} Training HistGradientBoostingClassifier...", flush=True)
-t2=time.time()
-hgb=HistGradientBoostingClassifier(
-    max_iter=600, learning_rate=0.04, max_leaf_nodes=63,
-    min_samples_leaf=30, l2_regularization=0.1,
-    random_state=42, verbose=0
-)
-hgb.fit(X_tr,y_tr)
-raw=hgb.predict_proba(X_ho)[:,1]
-ap_raw=average_precision_score(y_ho,raw)
-print(f"  HistGBM: AP={ap_raw:.4f}  AUROC={roc_auc_score(y_ho,raw):.4f}  ({time.time()-t2:.1f}s)")
-
-# Isotonic calibration
-cal=IsotonicRegression(out_of_bounds="clip")
-cal.fit(raw,y_ho)
-cal_p=np.clip(cal.predict(raw),0,1)
-ap_cal=average_precision_score(y_ho,cal_p)
-print(f"  Calibrated: AP={ap_cal:.4f}")
-
-model=XdevModel(hgb=hgb,calibrator=cal)
-import joblib
-joblib.dump(model,CANDIDATE_OUT,compress=3)
-with open(CANDIDATE_OUT,"rb") as f:
-    digest=hashlib.sha256(f.read()).hexdigest()
-
-print(f"\n{ts()} ✅ Candidate saved: {CANDIDATE_OUT}")
-print(f"   AP={ap_cal:.4f}  digest={digest[:20]}...")
-print(f"   25 features  model=HistGBM+IsotonicRegression")
-print(f"\n=== DONE ===")
+model.save(MODEL_OUT)
+print(f"{ts()} saved {MODEL_OUT}", flush=True)

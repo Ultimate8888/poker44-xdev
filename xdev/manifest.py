@@ -30,22 +30,22 @@ def build_manifest(model_path: Path = None) -> dict:
     }
 
     manifest = {
-        "model_name":    "xdev-trainer-v1",
-        "model_version": "hgb-within-batch-25feat-v1",
+        "model_name":    "xdev-trainer-v2",
+        "model_version": "hgb-within-batch-60feat-v2",
         "framework":     "sklearn-histgbm",
         "license":       "MIT",
-        "repo_url":      "https://github.com/SerGem811/poker44-xdev",
+        "repo_url":      "https://github.com/Ultimate8888/poker44-xdev",
         "repo_commit":   _git_head(REPO_ROOT),
         "source_hashes": {k: _hash_file(v) for k, v in source_files.items()},
         "open_source":   True,
         "private_data_attestation": False,
         "training_data_statement": (
-            "Trained on 724 labeled poker sessions (362 bot, 362 human) from the Poker44 "
-            "benchmark API (fetched 2026-07-06). Sessions augmented by concatenation (pairs "
-            "and triples) to 1326 per class. Synthetic within-batch training: 300 batches × 100 "
-            "sessions (30-70 bots per batch, variable composition for robustness). "
-            "Feature set: top-25 temporal and behavioral features selected by Cohen's d and "
-            "LightGBM importance from a 317-feature analysis. "
+            "Trained on 1318 labeled poker sessions (659 bot, 659 human) from the Poker44 "
+            "benchmark API (fetched 2026-07-10). All hands projected through the validator's "
+            "prepare_hand_for_miner canonicalizer before feature extraction. Synthetic "
+            "within-batch training: 400 batches × 100 sessions (30-70 bots per batch). "
+            "Feature set: top-60 features selected by LightGBM gain and Cohen's d on "
+            "projected data from a 317-feature analysis. "
             "Model: sklearn HistGradientBoostingClassifier + IsotonicRegression calibration."
         ),
     }

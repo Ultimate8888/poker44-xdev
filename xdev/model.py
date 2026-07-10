@@ -1,6 +1,7 @@
 """
-xdev-trainer-v1 model: HistGradientBoostingClassifier + IsotonicRegression calibration.
-Single model (not an ensemble) trained on within-batch normalized top-25 features.
+xdev-trainer-v2 model: HistGradientBoostingClassifier + IsotonicRegression calibration.
+Single model (not an ensemble) trained on within-batch normalized top-60 features
+extracted from validator-projected payloads.
 Genuinely different architecture from the main 7-model GBDT ensemble.
 """
 import numpy as np
@@ -30,7 +31,7 @@ class XdevModel:
         return joblib.load(path)
 
 
-def sigmoid_score(prob: float, t_star: float = 0.48, sharpness: float = 10.0) -> float:
+def sigmoid_score(prob: float, t_star: float = 0.70, sharpness: float = 10.0) -> float:
     """Map calibrated probability → final score [0,1] via shifted sigmoid."""
     import math
     return 1.0 / (1.0 + math.exp(-sharpness * (prob - t_star)))
