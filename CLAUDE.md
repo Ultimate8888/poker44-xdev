@@ -22,7 +22,8 @@ Independent second miner for UID 66, completely separate from `Poker44-subnet` (
 | `xdev/features.py` | 25-feature extractor (`extract_xdev_features`) |
 | `xdev/model.py` | XdevModel wrapper + `sigmoid_score` |
 | `models/xdev_v1.joblib` | Trained model artifact |
-| `scripts/train_xdev.py` | Training script |
+| `xdev/manifest.py` | Compliance manifest |
+| `scripts/train.py` | Training script |
 
 ## Runtime dependency
 Requires `Poker44-subnet` on the Python path for the base package:

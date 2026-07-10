@@ -110,6 +110,7 @@ class XdevMiner(BaseMinerNeuron):
             chunks = synapse.chunks or []
             if not chunks:
                 synapse.risk_scores = []
+                synapse.predictions = []
                 return synapse
 
             # Extract 25 features per chunk
@@ -135,6 +136,7 @@ class XdevMiner(BaseMinerNeuron):
         except Exception:
             bt.logging.error(traceback.format_exc())
             synapse.risk_scores = [0.5] * len(synapse.chunks or [])
+            synapse.predictions = [False] * len(synapse.chunks or [])
         return synapse
 
     async def blacklist(self, synapse: DetectionSynapse) -> Tuple[bool, str]:
