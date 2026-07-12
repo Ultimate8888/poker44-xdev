@@ -1,10 +1,11 @@
 """
-Feature selection for xdev-trainer-v2.
-Imports all features from the main repo and selects a top-60 subset re-ranked
-on validator-projected payloads (prepare_hand_for_miner view), since payload
-canonicalization (bet-size bucketing, action-window sampling, seat aliasing)
-changes which features carry signal versus raw benchmark data.
-Ranking: LightGBM gain + |Cohen's d| on within-batch-normalized features.
+Feature selection for xdev-trainer-v3.
+Imports all features from the main repo and selects a top-60 subset ranked
+on validator-projected payloads (prepare_hand_for_miner view) over the full
+benchmark history INCLUDING the 2026-07-11/12 competition-era releases,
+since new bot families drifted strongly on table-size and action-pattern
+features. Ranking: LightGBM gain (0.6) + |Cohen's d| (0.4) on
+within-batch-normalized features.
 """
 import sys
 import numpy as np
@@ -12,43 +13,43 @@ sys.path.insert(0, "/root/work/Poker44-subnet")
 
 from poker44.miner_model.features import FEATURE_NAMES as _ALL_NAMES, extract_chunk_features as _extract_all
 
-# Top-60 features ranked on validator-projected data (2026-07-10 benchmark snapshot)
+# Top-60 features ranked on validator-projected data (benchmark through 2026-07-12)
 XDEV_FEATURE_NAMES = [
     "min_frac_fold",
-    "max_frac_fold",
+    "q50_frac_fold",
+    "max_frac_check",
     "q50_frac_check",
+    "q50_frac_call",
     "q50_frac_bet",
-    "mean_frac_raise",
+    "max_frac_raise",
     "std_action_entropy",
-    "min_action_entropy",
     "q10_aggression_factor",
-    "q50_size_cv",
-    "q50_size_bucket_entropy",
-    "std_size_modal_frac",
     "q10_size_modal_frac",
     "q10_size_bucket_snap",
-    "min_pot_growth_mean",
     "q10_pot_growth_mean",
     "max_reach_turn_plus",
+    "min_schema_actor_switch_rate",
     "min_schema_actor_run_max_share",
+    "max_schema_actor_run_max_share",
     "std_schema_action_run_max_share",
-    "max_schema_action_run_max_share",
-    "q90_schema_action_run_max_share",
+    "q10_schema_action_run_max_share",
     "max_schema_street_entropy",
+    "max_schema_raise_to_share",
     "q10_schema_raise_to_share",
-    "min_schema_nonzero_amount_share",
-    "q10_schema_nonzero_amount_share",
+    "max_schema_nonzero_amount_share",
+    "max_schema_starting_stack_iqr_bb",
+    "min_extra_unique_actor_share",
     "q90_extra_unique_actor_share",
     "max_extra_street_count",
     "q10_extra_amount_mean_bb",
+    "max_extra_amount_q90_bb",
     "q10_extra_amount_q90_bb",
     "min_extra_stack_mean_bb",
-    "std_extra_stack_std_bb",
     "max_extra_stack_std_bb",
-    "q90_extra_stack_std_bb",
     "unique_bb_buckets",
     "top_bb_bucket_share",
     "lag1_autocorr_aggression",
+    "lag1_autocorr_fold",
     "lag2_autocorr_fold",
     "lag2_autocorr_size_cv",
     "trend_slope_aggression",
@@ -57,7 +58,7 @@ XDEV_FEATURE_NAMES = [
     "lag3_autocorr_aggression",
     "lag3_autocorr_size_cv",
     "seq_action_sig_unique_share",
-    "seq_actor_sig_unique_share",
+    "seq_actor_sig_top_share",
     "seq_street_sig_unique_share",
     "seq_amount_bucket_sig_unique_share",
     "seq_high_aggression_hand_rate",
@@ -68,12 +69,12 @@ XDEV_FEATURE_NAMES = [
     "bet_pot_ratio_cluster_frac",
     "hero_bet_pot_ratio_cv",
     "aggro_q4_minus_q1",
+    "chunk_flop_action_share",
     "chunk_river_action_share",
     "hero_flop_action_share",
     "hero_river_action_share",
     "flop_aggro_share",
     "turn_aggro_share",
-    "river_aggro_share",
 ]
 
 N_XDEV_FEATURES = len(XDEV_FEATURE_NAMES)

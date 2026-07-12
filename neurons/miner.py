@@ -1,5 +1,5 @@
 """
-poker44-xdev miner — xdev-trainer-v2
+poker44-xdev miner — xdev-trainer-v3
 HistGradientBoostingClassifier on top-60 features re-ranked on validator-projected
 payloads, within-batch normalized.
 Hotkey: zero-1 (UID 66), port 8094.
@@ -40,7 +40,7 @@ from poker44.utils.model_manifest import (
 from xdev.features import XDEV_FEATURE_NAMES, N_XDEV_FEATURES, extract_xdev_features
 from xdev.model import XdevModel, sigmoid_score
 
-_MODEL_PATH = str(_XDEV_ROOT / "models" / "xdev_v2.joblib")
+_MODEL_PATH = str(_XDEV_ROOT / "models" / "xdev_v3.joblib")
 
 
 def _git_head(repo_root: Path) -> str:
@@ -73,8 +73,8 @@ class XdevMiner(BaseMinerNeuron):
                 _XDEV_ROOT / "xdev" / "model.py",
             ],
             defaults={
-                "model_name":    "xdev-trainer-v2",
-                "model_version": "hgb-within-batch-60feat-v2",
+                "model_name":    "xdev-trainer-v3",
+                "model_version": "hgb-within-batch-60feat-v3",
                 "framework":     "sklearn-histgbm",
                 "license":       "MIT",
                 "repo_url":      "https://github.com/Ultimate8888/poker44-xdev",
@@ -85,17 +85,18 @@ class XdevMiner(BaseMinerNeuron):
                     "Single HistGradientBoostingClassifier + IsotonicRegression calibration. "
                     "Top-60 temporal and behavioral features re-ranked on validator-projected "
                     "payloads (prepare_hand_for_miner view). Within-batch normalization. "
-                    "Trained on 1318 sessions, 400 variable-composition batches."
+                    "Trained on 1588 sessions incl. competition-era releases, 600 batches."
                 ),
                 "training_data_statement": (
-                    "Trained on 1318 labeled poker sessions (659 bot, 659 human) from the Poker44 "
-                    "benchmark API (fetched 2026-07-10). All hands projected through the "
-                    "validator's prepare_hand_for_miner canonicalizer before feature extraction "
-                    "to match the miner-visible payload distribution. Synthetic within-batch "
-                    "training: 400 batches x 100 sessions (30-70 bots per batch). Feature set: "
-                    "top-60 features selected by LightGBM gain and Cohen's d on projected data. "
-                    "Model: sklearn HistGradientBoostingClassifier + IsotonicRegression "
-                    "calibration. No private data used."
+                    "Trained on 1588 labeled poker sessions (794 bot, 794 human) from the Poker44 "
+                    "benchmark API (all releases through 2026-07-12, including competition-era "
+                    "data). All hands projected through the validator's prepare_hand_for_miner "
+                    "canonicalizer before feature extraction to match the miner-visible payload "
+                    "distribution. Synthetic within-batch training: 600 batches x 100 sessions "
+                    "(30-70 bots per batch). Feature set: top-60 features selected by LightGBM "
+                    "gain and Cohen's d on projected data. Model: sklearn "
+                    "HistGradientBoostingClassifier + IsotonicRegression calibration. "
+                    "No private data used."
                 ),
                 "private_data_attestation": False,
             },
