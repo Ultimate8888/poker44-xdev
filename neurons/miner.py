@@ -110,6 +110,7 @@ class XdevMiner(BaseMinerNeuron):
 
     async def forward(self, synapse: DetectionSynapse) -> DetectionSynapse:
         try:
+            synapse.model_manifest = self.model_manifest
             chunks = synapse.chunks or []
             if not chunks:
                 synapse.risk_scores = []
