@@ -30,9 +30,9 @@ def build_manifest(model_path: Path = None) -> dict:
     }
 
     manifest = {
-        "model_name":    "xdev-trainer-v3",
-        "model_version": "hgb-within-batch-60feat-v3",
-        "framework":     "sklearn-histgbm",
+        "model_name":    "xdev-trainer-v4",
+        "model_version": "ens3-within-batch-70feat-v4",
+        "framework":     "sklearn-lightgbm-ensemble",
         "license":       "MIT",
         "repo_url":      "https://github.com/Ultimate8888/poker44-xdev",
         "repo_commit":   _git_head(REPO_ROOT),
@@ -45,8 +45,9 @@ def build_manifest(model_path: Path = None) -> dict:
             "validator's prepare_hand_for_miner canonicalizer before feature extraction. "
             "Synthetic within-batch training: 600 batches × 100 sessions (30-70 bots per batch). "
             "Feature set: top-60 features selected by LightGBM gain and Cohen's d on "
-            "projected data from a 317-feature analysis. "
-            "Model: sklearn HistGradientBoostingClassifier + IsotonicRegression calibration."
+            "projected data from a 317-feature analysis, plus 10 competition-era drift "
+            "features. Model: soft-vote ensemble (HistGradientBoosting + LightGBM + "
+            "ExtraTrees) + IsotonicRegression calibration."
         ),
     }
 

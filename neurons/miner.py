@@ -1,7 +1,8 @@
 """
-poker44-xdev miner — xdev-trainer-v3
-HistGradientBoostingClassifier on top-60 features re-ranked on validator-projected
-payloads, within-batch normalized.
+poker44-xdev miner — xdev-trainer-v4
+Calibrated HGB+LightGBM+ExtraTrees ensemble on 70 features (top-60 ranked on
+validator-projected payloads + 10 competition-era drift features),
+within-batch normalized.
 Hotkey: zero-1 (UID 66), port 8094.
 
 Must be run from /root/work/Poker44-subnet (or with PYTHONPATH set to it)
@@ -40,7 +41,7 @@ from poker44.utils.model_manifest import (
 from xdev.features import XDEV_FEATURE_NAMES, N_XDEV_FEATURES, extract_xdev_features
 from xdev.model import XdevModel, sigmoid_score
 
-_MODEL_PATH = str(_XDEV_ROOT / "models" / "xdev_v3.joblib")
+_MODEL_PATH = str(_XDEV_ROOT / "models" / "xdev_v4.joblib")
 
 
 def _git_head(repo_root: Path) -> str:
@@ -53,7 +54,7 @@ def _git_head(repo_root: Path) -> str:
 
 
 class XdevMiner(BaseMinerNeuron):
-    """Poker44 xdev miner: HistGBM on 25 temporal/behavioral features."""
+    """Poker44 xdev miner: calibrated GBDT ensemble on 70 behavioral features."""
 
     def __init__(self, config=None):
         super().__init__(config=config)
@@ -61,7 +62,7 @@ class XdevMiner(BaseMinerNeuron):
         self.xdev_model = XdevModel.load(_MODEL_PATH)
         bt.logging.info(
             f"xdev miner loaded | features={N_XDEV_FEATURES} | "
-            f"model={type(self.xdev_model.hgb).__name__}"
+            f"model={type(self.xdev_model).__name__}"
         )
 
         # Build manifest
@@ -73,18 +74,19 @@ class XdevMiner(BaseMinerNeuron):
                 _XDEV_ROOT / "xdev" / "model.py",
             ],
             defaults={
-                "model_name":    "xdev-trainer-v3",
-                "model_version": "hgb-within-batch-60feat-v3",
-                "framework":     "sklearn-histgbm",
+                "model_name":    "xdev-trainer-v4",
+                "model_version": "ens3-within-batch-70feat-v4",
+                "framework":     "sklearn-lightgbm-ensemble",
                 "license":       "MIT",
                 "repo_url":      "https://github.com/Ultimate8888/poker44-xdev",
                 "repo_commit":   _git_head(_XDEV_ROOT),
                 "open_source":   True,
                 "inference_mode": "remote",
                 "notes": (
-                    "Single HistGradientBoostingClassifier + IsotonicRegression calibration. "
-                    "Top-60 temporal and behavioral features re-ranked on validator-projected "
-                    "payloads (prepare_hand_for_miner view). Within-batch normalization. "
+                    "Soft-vote ensemble (HistGradientBoosting + LightGBM + ExtraTrees) with "
+                    "IsotonicRegression calibration. 70 features: top-60 ranked on "
+                    "validator-projected payloads plus 10 competition-era drift features "
+                    "(n_players family, action-bigram entropy). Within-batch normalization. "
                     "Trained on 1588 sessions incl. competition-era releases, 600 batches."
                 ),
                 "training_data_statement": (
@@ -94,9 +96,10 @@ class XdevMiner(BaseMinerNeuron):
                     "canonicalizer before feature extraction to match the miner-visible payload "
                     "distribution. Synthetic within-batch training: 600 batches x 100 sessions "
                     "(30-70 bots per batch). Feature set: top-60 features selected by LightGBM "
-                    "gain and Cohen's d on projected data. Model: sklearn "
-                    "HistGradientBoostingClassifier + IsotonicRegression calibration. "
-                    "No private data used."
+                    "gain and Cohen's d on projected data, plus 10 features with the strongest "
+                    "old-to-new-era bot drift. Model: soft-vote ensemble of sklearn "
+                    "HistGradientBoosting, LightGBM and ExtraTrees with IsotonicRegression "
+                    "calibration. No private data used."
                 ),
                 "private_data_attestation": False,
             },

@@ -10,8 +10,8 @@
 ## What this repo is
 Independent second miner for UID 66, completely separate from `Poker44-subnet` (UID 123 / SerGem811). Uses a lighter architecture to avoid copycat/duplicate penalties.
 
-- **Model**: Single `HistGradientBoostingClassifier` + `IsotonicRegression` calibration
-- **Features**: 60 features (`xdev/features.py`), re-ranked on validator-projected payloads
+- **Model**: Soft-vote ensemble (`HistGradientBoosting` + `LightGBM` + `ExtraTrees`) + `IsotonicRegression` calibration (`XdevEnsemble`)
+- **Features**: 70 features (`xdev/features.py`): top-60 on validator-projected payloads + 10 competition-era drift features
 - **Scoring**: `sigmoid_score(p, t_star=0.70, sharpness=10.0)`
 - **Within-batch normalization**: yes
 - **Critical**: always train on data projected through `prepare_hand_for_miner` (validator payload view) — raw benchmark hands are distribution-mismatched
@@ -22,7 +22,7 @@ Independent second miner for UID 66, completely separate from `Poker44-subnet` (
 | `neurons/miner.py` | Main miner entry point (XdevMiner class) |
 | `xdev/features.py` | 60-feature extractor (`extract_xdev_features`) |
 | `xdev/model.py` | XdevModel wrapper + `sigmoid_score` |
-| `models/xdev_v3.joblib` | Trained model artifact (v1/v2 kept for rollback) |
+| `models/xdev_v4.joblib` | Trained model artifact (v1-v3 kept for rollback) |
 | `xdev/manifest.py` | Compliance manifest |
 | `scripts/train.py` | Training script |
 

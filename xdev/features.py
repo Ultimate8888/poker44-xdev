@@ -1,11 +1,10 @@
 """
-Feature selection for xdev-trainer-v3.
-Imports all features from the main repo and selects a top-60 subset ranked
-on validator-projected payloads (prepare_hand_for_miner view) over the full
-benchmark history INCLUDING the 2026-07-11/12 competition-era releases,
-since new bot families drifted strongly on table-size and action-pattern
-features. Ranking: LightGBM gain (0.6) + |Cohen's d| (0.4) on
-within-batch-normalized features.
+Feature selection for xdev-trainer-v4.
+Top-60 subset ranked on validator-projected payloads over the full benchmark
+history (through 2026-07-12), PLUS the 10 features with the strongest
+old-era -> competition-era bot drift (table-size / n_players family and
+action-bigram entropy, Cohen's d up to 1.7), so the model can track the new
+bot generation. All extraction happens on the prepare_hand_for_miner view.
 """
 import sys
 import numpy as np
@@ -13,7 +12,7 @@ sys.path.insert(0, "/root/work/Poker44-subnet")
 
 from poker44.miner_model.features import FEATURE_NAMES as _ALL_NAMES, extract_chunk_features as _extract_all
 
-# Top-60 features ranked on validator-projected data (benchmark through 2026-07-12)
+# 60 ranked features + 10 drift features, in feature-index order
 XDEV_FEATURE_NAMES = [
     "min_frac_fold",
     "q50_frac_fold",
@@ -26,9 +25,12 @@ XDEV_FEATURE_NAMES = [
     "q10_aggression_factor",
     "q10_size_modal_frac",
     "q10_size_bucket_snap",
+    "mean_hero_frac",
+    "std_hero_frac",
     "q10_pot_growth_mean",
     "max_reach_turn_plus",
     "min_schema_actor_switch_rate",
+    "mean_schema_actor_run_max_share",
     "min_schema_actor_run_max_share",
     "max_schema_actor_run_max_share",
     "std_schema_action_run_max_share",
@@ -38,14 +40,20 @@ XDEV_FEATURE_NAMES = [
     "q10_schema_raise_to_share",
     "max_schema_nonzero_amount_share",
     "max_schema_starting_stack_iqr_bb",
+    "std_extra_unique_actor_share",
     "min_extra_unique_actor_share",
     "q90_extra_unique_actor_share",
     "max_extra_street_count",
+    "mean_extra_n_players",
+    "std_extra_n_players",
+    "min_extra_n_players",
+    "q10_extra_n_players",
     "q10_extra_amount_mean_bb",
     "max_extra_amount_q90_bb",
     "q10_extra_amount_q90_bb",
     "min_extra_stack_mean_bb",
     "max_extra_stack_std_bb",
+    "mean_n_players",
     "unique_bb_buckets",
     "top_bb_bucket_share",
     "lag1_autocorr_aggression",
@@ -68,6 +76,7 @@ XDEV_FEATURE_NAMES = [
     "bet_pot_ratio_cv",
     "bet_pot_ratio_cluster_frac",
     "hero_bet_pot_ratio_cv",
+    "action_bigram_entropy",
     "aggro_q4_minus_q1",
     "chunk_flop_action_share",
     "chunk_river_action_share",
@@ -78,18 +87,18 @@ XDEV_FEATURE_NAMES = [
 ]
 
 N_XDEV_FEATURES = len(XDEV_FEATURE_NAMES)
-assert N_XDEV_FEATURES == 60
+assert N_XDEV_FEATURES == 70
 
 _XDEV_INDICES = [_ALL_NAMES.index(n) for n in XDEV_FEATURE_NAMES]
 
 
 def extract_xdev_features(hands) -> np.ndarray:
-    """Extract 60 xdev features from a session (list of hands)."""
+    """Extract 70 xdev features from a session (list of hands)."""
     all_feats = _extract_all(hands)
     feats = np.array([all_feats[i] for i in _XDEV_INDICES], dtype=np.float32)
     return np.nan_to_num(feats, nan=0.0, posinf=0.0, neginf=0.0)
 
 
 def extract_xdev_batch(sessions_list) -> np.ndarray:
-    """Extract features for a list of sessions, returns shape (N, 60)."""
+    """Extract features for a list of sessions, returns shape (N, 70)."""
     return np.array([extract_xdev_features(h) for h in sessions_list], dtype=np.float32)
