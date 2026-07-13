@@ -30,8 +30,8 @@ def build_manifest(model_path: Path = None) -> dict:
     }
 
     manifest = {
-        "model_name":    "xdev-trainer-v4",
-        "model_version": "ens3-within-batch-70feat-v4",
+        "model_name":    "xdev-trainer-v5",
+        "model_version": "ens3-realhuman-wideprev-70feat-v5",
         "framework":     "sklearn-lightgbm-ensemble",
         "license":       "MIT",
         "repo_url":      "https://github.com/Ultimate8888/poker44-xdev",
@@ -41,9 +41,10 @@ def build_manifest(model_path: Path = None) -> dict:
         "private_data_attestation": False,
         "training_data_statement": (
             "Trained on 1588 labeled poker sessions (794 bot, 794 human) from the Poker44 "
-            "benchmark API (all releases through 2026-07-12). All hands projected through the "
+            "benchmark API (all releases through 2026-07-12) plus 916 real-human sessions from "
+            "the public hands_generator/human_hands corpus. All hands projected through the "
             "validator's prepare_hand_for_miner canonicalizer before feature extraction. "
-            "Synthetic within-batch training: 600 batches × 100 sessions (30-70 bots per batch). "
+            "Synthetic within-batch training: 800 batches × 100 sessions (5-70 bots per batch). "
             "Feature set: top-60 features selected by LightGBM gain and Cohen's d on "
             "projected data from a 317-feature analysis, plus 10 competition-era drift "
             "features. Model: soft-vote ensemble (HistGradientBoosting + LightGBM + "

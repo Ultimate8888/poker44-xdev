@@ -22,7 +22,7 @@ Independent second miner for UID 66, completely separate from `Poker44-subnet` (
 | `neurons/miner.py` | Main miner entry point (XdevMiner class) |
 | `xdev/features.py` | 60-feature extractor (`extract_xdev_features`) |
 | `xdev/model.py` | XdevModel wrapper + `sigmoid_score` |
-| `models/xdev_v4.joblib` | Trained model artifact (v1-v3 kept for rollback) |
+| `models/xdev_v5.joblib` | Trained model artifact (v1-v4 kept for rollback) |
 | `xdev/manifest.py` | Compliance manifest |
 | `scripts/train.py` | Training script |
 
