@@ -58,6 +58,46 @@ class XdevEnsemble:
         return joblib.load(path)
 
 
+class XdevRankBlend:
+    """Rank-blended ensemble: combine members by average within-batch rank-percentile.
+
+    Rank-blending (vs probability averaging) is robust to per-member calibration
+    drift under distribution shift — each member votes by the *order* it induces,
+    not its absolute probabilities. Since the validator scores each query batch by
+    rank-based metrics (AP + recall@fpr), an internal ranking output is the natural
+    target. Members are trained on within-batch-normalized features from
+    validator-projected payloads. Own implementation (no external model code).
+
+    For small batches (< min_rank_n) rank percentiles are unstable, so it falls
+    back to probability averaging.
+    """
+
+    def __init__(self, members, min_rank_n: int = 8):
+        self.members = list(members)
+        self.min_rank_n = int(min_rank_n)
+
+    def _prob_mean(self, X: np.ndarray) -> np.ndarray:
+        return np.mean([m.predict_proba(X)[:, 1] for m in self.members], axis=0)
+
+    def predict_proba(self, X: np.ndarray) -> np.ndarray:
+        n = X.shape[0]
+        if n < self.min_rank_n:
+            return np.clip(self._prob_mean(X), 0, 1)
+        ranks = []
+        for m in self.members:
+            p = m.predict_proba(X)[:, 1]
+            r = np.argsort(np.argsort(p)) / max(n - 1, 1)
+            ranks.append(r)
+        return np.clip(np.mean(ranks, axis=0), 0, 1)
+
+    def save(self, path: str):
+        joblib.dump(self, path, compress=3)
+
+    @classmethod
+    def load(cls, path: str) -> "XdevRankBlend":
+        return joblib.load(path)
+
+
 def sigmoid_score(prob: float, t_star: float = 0.70, sharpness: float = 10.0) -> float:
     """Map calibrated probability → final score [0,1] via shifted sigmoid."""
     import math

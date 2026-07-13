@@ -1,8 +1,8 @@
 """
-poker44-xdev miner — xdev-trainer-v4
-Calibrated HGB+LightGBM+ExtraTrees ensemble on 70 features (top-60 ranked on
-validator-projected payloads + 10 competition-era drift features),
-within-batch normalized.
+poker44-xdev miner — xdev-trainer-v6
+Rank-blended HGB+LightGBM+ExtraTrees ensemble on 120 features ranked on
+validator-projected payloads, within-batch normalized. Selected by
+walk-forward validation on the AP-dominated competition metric.
 Hotkey: zero-1 (UID 66), port 8094.
 
 Must be run from /root/work/Poker44-subnet (or with PYTHONPATH set to it)
@@ -39,9 +39,9 @@ from poker44.utils.model_manifest import (
 )
 
 from xdev.features import XDEV_FEATURE_NAMES, N_XDEV_FEATURES, extract_xdev_features
-from xdev.model import XdevModel, sigmoid_score
+from xdev.model import XdevRankBlend, sigmoid_score
 
-_MODEL_PATH = str(_XDEV_ROOT / "models" / "xdev_v5.joblib")
+_MODEL_PATH = str(_XDEV_ROOT / "models" / "xdev_v6.joblib")
 
 
 def _git_head(repo_root: Path) -> str:
@@ -59,7 +59,7 @@ class XdevMiner(BaseMinerNeuron):
     def __init__(self, config=None):
         super().__init__(config=config)
 
-        self.xdev_model = XdevModel.load(_MODEL_PATH)
+        self.xdev_model = XdevRankBlend.load(_MODEL_PATH)
         bt.logging.info(
             f"xdev miner loaded | features={N_XDEV_FEATURES} | "
             f"model={type(self.xdev_model).__name__}"
@@ -74,21 +74,22 @@ class XdevMiner(BaseMinerNeuron):
                 _XDEV_ROOT / "xdev" / "model.py",
             ],
             defaults={
-                "model_name":    "xdev-trainer-v5",
-                "model_version": "ens3-realhuman-wideprev-70feat-v5",
-                "framework":     "sklearn-lightgbm-ensemble",
+                "model_name":    "xdev-trainer-v6",
+                "model_version": "rankblend3-wideprev-120feat-v6",
+                "framework":     "sklearn-lightgbm-rankblend",
                 "license":       "MIT",
                 "repo_url":      "https://github.com/Ultimate8888/poker44-xdev",
                 "repo_commit":   _git_head(_XDEV_ROOT),
                 "open_source":   True,
                 "inference_mode": "remote",
                 "notes": (
-                    "Soft-vote ensemble (HistGradientBoosting + LightGBM + ExtraTrees) with "
-                    "IsotonicRegression calibration. 70 features: top-60 ranked on "
-                    "validator-projected payloads plus 10 competition-era drift features "
-                    "(n_players family, action-bigram entropy). Within-batch normalization. "
-                    "Trained on 1588 benchmark sessions plus 916 real-human sessions, "
-                    "800 batches with wide bot prevalence (5-70 per 100)."
+                    "Rank-blended ensemble (HistGradientBoosting + LightGBM + ExtraTrees), "
+                    "combined by mean within-batch rank-percentile for robustness to "
+                    "calibration drift. 120 features ranked by LightGBM gain on "
+                    "validator-projected payloads. Within-batch normalization. Trained on 1588 "
+                    "benchmark sessions plus 916 real-human sessions, 700 wide-prevalence "
+                    "batches (5-70 per 100). Selected by walk-forward validation on the "
+                    "AP-dominated competition metric."
                 ),
                 "training_data_statement": (
                     "Trained on 1588 labeled poker sessions (794 bot, 794 human) from the Poker44 "
@@ -96,12 +97,12 @@ class XdevMiner(BaseMinerNeuron):
                     "built from the subnet repo's public hands_generator/human_hands corpus "
                     "(32088 hands, sliced into 35-hand sessions, label human). All hands "
                     "projected through the validator's prepare_hand_for_miner canonicalizer "
-                    "before feature extraction. Synthetic within-batch training: 800 batches x "
+                    "before feature extraction. Synthetic within-batch training: 700 batches x "
                     "100 sessions with wide bot prevalence (5-70 bots per batch). Feature set: "
-                    "top-60 features selected by LightGBM gain and Cohen's d on projected data, "
-                    "plus 10 features with the strongest old-to-new-era bot drift. Model: "
-                    "soft-vote ensemble of sklearn HistGradientBoosting, LightGBM and ExtraTrees "
-                    "with IsotonicRegression calibration. No private data used."
+                    "top-120 features by LightGBM gain on projected data. Model: rank-blended "
+                    "ensemble of sklearn HistGradientBoosting, LightGBM and ExtraTrees "
+                    "(mean within-batch rank-percentile). Model selection by walk-forward "
+                    "validation (train earlier dates, test later dates). No private data used."
                 ),
                 "private_data_attestation": False,
             },

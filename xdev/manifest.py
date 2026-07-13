@@ -30,9 +30,9 @@ def build_manifest(model_path: Path = None) -> dict:
     }
 
     manifest = {
-        "model_name":    "xdev-trainer-v5",
-        "model_version": "ens3-realhuman-wideprev-70feat-v5",
-        "framework":     "sklearn-lightgbm-ensemble",
+        "model_name":    "xdev-trainer-v6",
+        "model_version": "rankblend3-wideprev-120feat-v6",
+        "framework":     "sklearn-lightgbm-rankblend",
         "license":       "MIT",
         "repo_url":      "https://github.com/Ultimate8888/poker44-xdev",
         "repo_commit":   _git_head(REPO_ROOT),

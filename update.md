@@ -10,8 +10,8 @@
 ## What this repo is
 Independent second miner for UID 66, completely separate from `Poker44-subnet` (UID 123 / SerGem811). Uses a lighter architecture to avoid copycat/duplicate penalties.
 
-- **Model**: Soft-vote ensemble (`HistGradientBoosting` + `LightGBM` + `ExtraTrees`) + `IsotonicRegression` calibration (`XdevEnsemble`)
-- **Features**: 70 features (`xdev/features.py`): top-60 on validator-projected payloads + 10 competition-era drift features
+- **Model**: Rank-blended ensemble (`HistGradientBoosting` + `LightGBM` + `ExtraTrees`, mean within-batch rank-percentile) (`XdevRankBlend`)
+- **Features**: 120 features (`xdev/features.py`) ranked by LightGBM gain on validator-projected payloads
 - **Scoring**: `sigmoid_score(p, t_star=0.70, sharpness=10.0)`
 - **Within-batch normalization**: yes
 - **Critical**: always train on data projected through `prepare_hand_for_miner` (validator payload view) — raw benchmark hands are distribution-mismatched
@@ -20,9 +20,9 @@ Independent second miner for UID 66, completely separate from `Poker44-subnet` (
 | File | Purpose |
 |---|---|
 | `neurons/miner.py` | Main miner entry point (XdevMiner class) |
-| `xdev/features.py` | 60-feature extractor (`extract_xdev_features`) |
-| `xdev/model.py` | XdevModel wrapper + `sigmoid_score` |
-| `models/xdev_v5.joblib` | Trained model artifact (v1-v4 kept for rollback) |
+| `xdev/features.py` | 120-feature extractor (`extract_xdev_features`) |
+| `xdev/model.py` | `XdevRankBlend` (+ legacy wrappers) + `sigmoid_score` |
+| `models/xdev_v6.joblib` | Trained model artifact (v1-v5 kept for rollback) |
 | `xdev/manifest.py` | Compliance manifest |
 | `scripts/train.py` | Training script |
 
