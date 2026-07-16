@@ -26,12 +26,13 @@ def build_manifest(model_path: Path = None) -> dict:
     source_files = {
         "features.py": REPO_ROOT / "xdev" / "features.py",
         "model.py":    REPO_ROOT / "xdev" / "model.py",
+        "ngram_features.py": REPO_ROOT / "xdev" / "ngram_features.py",
         "miner.py":    REPO_ROOT / "neurons" / "miner.py",
     }
 
     manifest = {
-        "model_name":    "xdev-trainer-v6",
-        "model_version": "rankblend3-wideprev-120feat-v6",
+        "model_name":    "xdev-trainer-v7",
+        "model_version": "rankblend3-ngram-168feat-v7",
         "framework":     "sklearn-lightgbm-rankblend",
         "license":       "MIT",
         "repo_url":      "https://github.com/Ultimate8888/poker44-xdev",

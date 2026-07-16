@@ -11,7 +11,7 @@
 Independent second miner for UID 66, completely separate from `Poker44-subnet` (UID 123 / SerGem811). Uses a lighter architecture to avoid copycat/duplicate penalties.
 
 - **Model**: Rank-blended ensemble (`HistGradientBoosting` + `LightGBM` + `ExtraTrees`, mean within-batch rank-percentile) (`XdevRankBlend`)
-- **Features**: 120 features (`xdev/features.py`) ranked by LightGBM gain on validator-projected payloads
+- **Features**: 168 features: 120 aggregate (`xdev/features.py`) + 48 own action n-gram features (`xdev/ngram_features.py`)
 - **Scoring**: `sigmoid_score(p, t_star=0.70, sharpness=10.0)`
 - **Within-batch normalization**: yes
 - **Critical**: always train on data projected through `prepare_hand_for_miner` (validator payload view) — raw benchmark hands are distribution-mismatched
@@ -21,8 +21,9 @@ Independent second miner for UID 66, completely separate from `Poker44-subnet` (
 |---|---|
 | `neurons/miner.py` | Main miner entry point (XdevMiner class) |
 | `xdev/features.py` | 120-feature extractor (`extract_xdev_features`) |
+| `xdev/ngram_features.py` | 48 action n-gram features (`extract_ngram_features`) |
 | `xdev/model.py` | `XdevRankBlend` (+ legacy wrappers) + `sigmoid_score` |
-| `models/xdev_v6.joblib` | Trained model artifact (v1-v5 kept for rollback) |
+| `models/xdev_v7.joblib` | Trained model artifact (v1-v6 kept for rollback) |
 | `xdev/manifest.py` | Compliance manifest |
 | `scripts/train.py` | Training script |
 
