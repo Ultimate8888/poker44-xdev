@@ -63,8 +63,8 @@ class XdevMiner(BaseMinerNeuron):
 
         self.xdev_model = XdevRankBlend.load(_MODEL_PATH)
         bt.logging.info(
-            f"xdev miner loaded | features={N_XDEV_FEATURES} | "
-            f"model={type(self.xdev_model).__name__}"
+            f"xdev miner loaded | features={N_XDEV_FEATURES}+{N_NGRAM_FEATURES}="
+            f"{N_XDEV_FEATURES + N_NGRAM_FEATURES} | model={type(self.xdev_model).__name__}"
         )
 
         # Build manifest
