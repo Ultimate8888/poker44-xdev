@@ -1,5 +1,5 @@
 """
-poker44-xdev miner — xdev-trainer-v7
+poker44-xdev miner — xdev-trainer-v8
 Rank-blended HGB+LightGBM+ExtraTrees ensemble on 168 features (120 aggregate
 ranked on validator-projected payloads + 48 own action n-gram features),
 within-batch normalized. Selected by walk-forward validation on the
@@ -43,7 +43,7 @@ from xdev.features import XDEV_FEATURE_NAMES, N_XDEV_FEATURES, extract_xdev_feat
 from xdev.ngram_features import NGRAM_VOCAB, N_NGRAM_FEATURES, extract_ngram_features
 from xdev.model import XdevRankBlend, sigmoid_score
 
-_MODEL_PATH = str(_XDEV_ROOT / "models" / "xdev_v7.joblib")  # 168 feats: 120 base + 48 n-gram
+_MODEL_PATH = str(_XDEV_ROOT / "models" / "xdev_v8.joblib")  # 168 feats: 120 base + 48 n-gram; data thru 2026-07-17
 
 
 def _git_head(repo_root: Path) -> str:
@@ -73,11 +73,12 @@ class XdevMiner(BaseMinerNeuron):
             implementation_files=[
                 _XDEV_ROOT / "neurons" / "miner.py",
                 _XDEV_ROOT / "xdev" / "features.py",
+                _XDEV_ROOT / "xdev" / "ngram_features.py",
                 _XDEV_ROOT / "xdev" / "model.py",
             ],
             defaults={
-                "model_name":    "xdev-trainer-v7",
-                "model_version": "rankblend3-ngram-168feat-v7",
+                "model_name":    "xdev-trainer-v8",
+                "model_version": "rankblend3-ngram-168feat-v8",
                 "framework":     "sklearn-lightgbm-rankblend",
                 "license":       "MIT",
                 "repo_url":      "https://github.com/Ultimate8888/poker44-xdev",
@@ -90,14 +91,14 @@ class XdevMiner(BaseMinerNeuron):
                     "calibration drift. 168 features: 120 aggregate features ranked by LightGBM "
                     "gain on validator-projected payloads, plus 48 own action n-gram features "
                     "(street+action+pot-ratio-bucket unigram/bigram/trigram counts). Within-batch "
-                    "normalization. Trained on 1588 benchmark sessions plus 916 real-human "
+                    "normalization. Trained on 2340 benchmark sessions plus 916 real-human "
                     "sessions, 700 wide-prevalence batches (5-70 per 100). Selected by "
                     "walk-forward validation on the AP-dominated competition metric "
                     "(improves worst-fold over the 120-feature v6)."
                 ),
                 "training_data_statement": (
-                    "Trained on 1588 labeled poker sessions (794 bot, 794 human) from the Poker44 "
-                    "benchmark API (all releases through 2026-07-12) plus 916 real-human sessions "
+                    "Trained on 2340 labeled poker sessions (1170 bot, 1170 human) from the Poker44 "
+                    "benchmark API (all releases through 2026-07-17) plus 916 real-human sessions "
                     "built from the subnet repo's public hands_generator/human_hands corpus "
                     "(32088 hands, sliced into 35-hand sessions, label human). All hands "
                     "projected through the validator's prepare_hand_for_miner canonicalizer "

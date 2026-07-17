@@ -1,13 +1,14 @@
 """
-Own action n-gram features for xdev-trainer-v7 (independent implementation).
+Own action n-gram features for xdev-trainer-v8 (independent implementation).
 
 Captures action-SEQUENCE micro-patterns as a projection-robust bag-of-n-grams,
 complementing the aggregate features in features.py. Each action becomes a token
 <street_initial><action_code><pot-ratio bucket>; we count unigrams, bigrams and
 trigrams of consecutive tokens across the chunk, normalized per hand. The fixed
-vocabulary below was selected from our own training data (benchmark + real-human
-sessions, projected through prepare_hand_for_miner) by bot/human discrimination.
-Standard n-gram method; implementation and vocabulary are our own.
+vocabulary below was selected from our own training data (benchmark through
+2026-07-17 + real-human sessions, projected through prepare_hand_for_miner) by
+bot/human discrimination. Standard n-gram method; implementation and vocabulary
+are our own.
 """
 from collections import Counter
 import numpy as np
@@ -54,20 +55,20 @@ def _chunk_gram_counts(chunk: list) -> Counter:
     return tot
 
 
-# fixed vocabulary selected from our training data (48 tokens)
+# fixed vocabulary selected from our training data through 2026-07-17 (48 tokens)
 NGRAM_VOCAB = [
-    'pRh', 'pRh>pFz', 'pRm', 'pBm', 
-    'pFz>pBm', 'pBs', 'pFz>pBs', 'pFz>pRh', 
-    'pFz>pFz>pFz', 'pFz>pFz>pBs', 'pRh>pFz>pFz', 'fBs', 
-    'pCs', 'pRm>pFz', 'pFz>pRh>pFz', 'pFz>pFz>pBm', 
-    'pFz>pRm', 'pFz>pRl', 'pFz>pFz>pRh', 'pRm>pFz>pFz', 
-    'fFz', 'pFz>pFz', 'pFz>pRm>pFz', 'tBs', 
-    'pRl>pFz', 'pFz>pRl>pFz', 'pRl', 'pFz>pCs', 
-    'pFz>pFz>pRm', 'fFz>fBs', 'rBs', 'pFz>pFz>pRl', 
-    'pRl>pFz>pFz', 'fKz', 'fBm>fFz', 'pFz>pCm', 
-    'pCs>fKz', 'pRl>pFz>pBm', 'rFz', 'fCs', 
-    'pCs>pFz', 'tFz>tBs', 'pKz', 'fBl', 
-    'tFz', 'fKz>fBm', 'fBm', 'fKz>fBm>fFz', 
+    'pRh', 'pRh>pFz', 'pRm', 'pFz>pFz>pFz', 
+    'pFz>pRh', 'pRh>pFz>pFz', 'pBm', 'pFz>pBm', 
+    'pBs', 'pFz>pBs', 'fBs', 'pFz>pFz>pBs', 
+    'pFz>pRh>pFz', 'pCs', 'pRm>pFz', 'pFz>pFz>pBm', 
+    'pFz>pRm', 'pFz>pFz', 'pFz>pRl', 'pFz>pFz>pRh', 
+    'fFz', 'pRm>pFz>pFz', 'pFz>pRm>pFz', 'tBs', 
+    'pFz>pRl>pFz', 'pRl>pFz', 'pFz>pCs', 'pFz>pFz>pRm', 
+    'pRl', 'rBs', 'pFz>pFz>pRl', 'fFz>fBs', 
+    'fKz', 'pRl>pFz>pFz', 'fBm>fFz', 'pFz>pCm', 
+    'pCs>fKz', 'rFz', 'pRl>pFz>pBm', 'fCs', 
+    'pKz', 'pCs>pFz', 'fBl', 'pFz', 
+    'tFz', 'fBm', 'tFz>tBs', 'fKz>fBm', 
 ]
 
 N_NGRAM_FEATURES = len(NGRAM_VOCAB)

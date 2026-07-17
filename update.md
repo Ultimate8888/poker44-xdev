@@ -23,7 +23,7 @@ Independent second miner for UID 66, completely separate from `Poker44-subnet` (
 | `xdev/features.py` | 120-feature extractor (`extract_xdev_features`) |
 | `xdev/ngram_features.py` | 48 action n-gram features (`extract_ngram_features`) |
 | `xdev/model.py` | `XdevRankBlend` (+ legacy wrappers) + `sigmoid_score` |
-| `models/xdev_v7.joblib` | Trained model artifact (v1-v6 kept for rollback) |
+| `models/xdev_v8.joblib` | Trained model artifact (v1-v7 kept for rollback) |
 | `xdev/manifest.py` | Compliance manifest |
 | `scripts/train.py` | Training script |
 
