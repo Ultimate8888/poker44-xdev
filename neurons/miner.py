@@ -1,9 +1,11 @@
 """
-poker44-xdev miner — xdev-trainer-v8 (self-contained, bittensor 10.x)
+poker44-xdev miner — xdev-trainer-v9 (self-contained, bittensor 10.x)
 
-Rank-blended HGB+LightGBM+ExtraTrees ensemble on 168 features (120 aggregate
-ranked on validator-projected payloads + 48 own action n-gram features),
-within-batch normalized. Trained on benchmark through 2026-07-17.
+Simple-benchmark baseline: single HistGradientBoostingClassifier + isotonic
+calibration on the full natural 317-feature set, within-batch normalized.
+Trained straight on the benchmark at natural 30-70 prevalence (benchmark humans
+only) through 2026-07-17 — a deliberately un-engineered control to test whether
+the elaborate v6-v8 pipeline was overfitting below the field.
 Hotkey: zero-1 (UID 66), port 8094.
 
 Self-contained chain plumbing on bittensor 10.x (the finney runtime upgrade of
@@ -39,11 +41,10 @@ from poker44.utils.model_manifest import (
     manifest_digest,
 )
 
-from xdev.features import XDEV_FEATURE_NAMES, N_XDEV_FEATURES, extract_xdev_features
-from xdev.ngram_features import NGRAM_VOCAB, N_NGRAM_FEATURES, extract_ngram_features
-from xdev.model import XdevRankBlend, sigmoid_score
+from xdev.features import extract_full_features
+from xdev.model import XdevModel, sigmoid_score
 
-_MODEL_PATH = str(_XDEV_ROOT / "models" / "xdev_v8.joblib")  # 168 feats: 120 base + 48 n-gram
+_MODEL_PATH = str(_XDEV_ROOT / "models" / "xdev_v9.joblib")  # simple-benchmark: single HistGBM+isotonic on 317 natural feats
 
 
 def _git_head(repo_root: Path) -> str:
@@ -83,10 +84,9 @@ class XdevMiner:
         self.uid = self.metagraph.hotkeys.index(self.hotkey)
         bt.logging.info(f"Running on subnet {self.netuid} uid {self.uid} network {args.network}")
 
-        self.xdev_model = XdevRankBlend.load(_MODEL_PATH)
+        self.xdev_model = XdevModel.load(_MODEL_PATH)
         bt.logging.info(
-            f"xdev miner loaded | features={N_XDEV_FEATURES}+{N_NGRAM_FEATURES}="
-            f"{N_XDEV_FEATURES + N_NGRAM_FEATURES} | model={type(self.xdev_model).__name__}"
+            f"xdev miner loaded | features=317 (natural) | model={type(self.xdev_model).__name__}"
         )
 
         self.model_manifest = build_local_model_manifest(
@@ -94,34 +94,34 @@ class XdevMiner:
             implementation_files=[
                 _XDEV_ROOT / "neurons" / "miner.py",
                 _XDEV_ROOT / "xdev" / "features.py",
-                _XDEV_ROOT / "xdev" / "ngram_features.py",
                 _XDEV_ROOT / "xdev" / "model.py",
             ],
             defaults={
-                "model_name":    "xdev-trainer-v8",
-                "model_version": "rankblend3-ngram-168feat-v8",
-                "framework":     "sklearn-lightgbm-rankblend",
+                "model_name":    "xdev-trainer-v9",
+                "model_version": "simple-benchmark-317feat-v9",
+                "framework":     "sklearn-histgbm",
                 "license":       "MIT",
                 "repo_url":      "https://github.com/Ultimate8888/poker44-xdev",
                 "repo_commit":   _git_head(_XDEV_ROOT),
                 "open_source":   True,
                 "inference_mode": "remote",
                 "notes": (
-                    "Rank-blended ensemble (HistGradientBoosting + LightGBM + ExtraTrees), "
-                    "combined by mean within-batch rank-percentile. 168 features: 120 aggregate "
-                    "ranked by LightGBM gain on validator-projected payloads, plus 48 own action "
-                    "n-gram features. Within-batch normalization. Trained on 2340 benchmark "
-                    "sessions (through 2026-07-17) plus 916 real-human sessions."
+                    "Single HistGradientBoostingClassifier + IsotonicRegression calibration on "
+                    "the full natural 317-feature set, within-batch normalized. Trained straight "
+                    "on the benchmark at natural bot prevalence (30-70 per 100), benchmark humans "
+                    "only. Deliberately simple baseline (no rank-blend, no n-grams, no synthetic "
+                    "negatives) to match the straightforward benchmark-trained models. Trained on "
+                    "2340 benchmark sessions through 2026-07-17."
                 ),
                 "training_data_statement": (
                     "Trained on 2340 labeled poker sessions (1170 bot, 1170 human) from the Poker44 "
-                    "benchmark API (all releases through 2026-07-17) plus 916 real-human sessions "
-                    "built from the subnet repo's public hands_generator/human_hands corpus "
-                    "(32088 hands). All hands projected through prepare_hand_for_miner before "
-                    "feature extraction. Synthetic within-batch training: 700 batches x 100 "
-                    "sessions, wide bot prevalence (5-70). Feature set: 120 features by LightGBM "
-                    "gain plus 48 own action n-gram features. Model: rank-blended ensemble of "
-                    "sklearn HistGradientBoosting, LightGBM and ExtraTrees. No private data used."
+                    "benchmark API (all releases through 2026-07-17). All hands projected through "
+                    "the validator's prepare_hand_for_miner canonicalizer before feature "
+                    "extraction. Synthetic within-batch training: 700 batches x 100 sessions at "
+                    "natural bot prevalence (30-70 bots per batch), benchmark humans only. Feature "
+                    "set: the full natural 317-feature aggregate extractor. Model: single sklearn "
+                    "HistGradientBoostingClassifier + IsotonicRegression calibration. "
+                    "No private data used."
                 ),
                 "private_data_attestation": False,
             },
@@ -152,9 +152,7 @@ class XdevMiner:
                 synapse.predictions = []
                 return synapse
 
-            base = np.array([extract_xdev_features(c) for c in chunks], dtype=np.float32)
-            ngram = np.array([extract_ngram_features(c) for c in chunks], dtype=np.float32)
-            feats = np.hstack([base, ngram])
+            feats = np.array([extract_full_features(c) for c in chunks], dtype=np.float32)
 
             mu = feats.mean(0)
             sig = feats.std(0)

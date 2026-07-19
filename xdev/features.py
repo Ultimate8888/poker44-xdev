@@ -152,3 +152,10 @@ def extract_xdev_features(hands) -> np.ndarray:
 def extract_xdev_batch(sessions_list) -> np.ndarray:
     """Extract features for a list of sessions, returns shape (N, 120)."""
     return np.array([extract_xdev_features(h) for h in sessions_list], dtype=np.float32)
+
+
+def extract_full_features(hands) -> np.ndarray:
+    """Extract the full natural 317-feature vector (used by the v9 simple-benchmark model)."""
+    all_feats = _extract_all(hands)
+    feats = np.asarray(all_feats, dtype=np.float32)
+    return np.nan_to_num(feats, nan=0.0, posinf=0.0, neginf=0.0)

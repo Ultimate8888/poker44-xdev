@@ -31,8 +31,8 @@ def build_manifest(model_path: Path = None) -> dict:
     }
 
     manifest = {
-        "model_name":    "xdev-trainer-v8",
-        "model_version": "rankblend3-ngram-168feat-v8",
+        "model_name":    "xdev-trainer-v9",
+        "model_version": "simple-benchmark-317feat-v9",
         "framework":     "sklearn-lightgbm-rankblend",
         "license":       "MIT",
         "repo_url":      "https://github.com/Ultimate8888/poker44-xdev",
